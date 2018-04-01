@@ -1,0 +1,70 @@
+stack: tero/gitlab-runner
+version: 0.1.0
+
+variables:
+  gitlab-ci-instances:
+    type: integer
+    default: 1
+    min: 1
+    from:
+      prompt: Enter the number of Runner instances?
+
+  gitlab-ci-url:
+    type: string
+    default: https://gitlab.com
+    from:
+      prompt: Enter the gitlab-ci coordinator URL (e.g. https://gitlab.com)
+
+  gitlab-ci-token:
+    type: string
+    from:
+      prompt: Enter the gitlab-ci token for this runner
+
+  gitlab-ci-description:
+    type: string
+    default: Kontena-Runner-in-${GRID}
+    from:
+      prompt: Enter the gitlab-ci description for this runner
+
+  gitlab-ci-tags:
+    type: string
+    default: Kontena-Runner-in-${GRID}
+    from:
+      prompt: Enter the gitlab-ci tags for this runner (comma separated e.g. first-tag,second-tag)
+
+  gitlab-ci-executor:
+    type: string
+    default: docker
+    from:
+      prompt: Enter the executor - ssh, docker+machine, docker-ssh+machine, kubernetes, docker, parallels, virtualbox, docker-ssh, shell
+
+  gitlab-ci-docker-image:
+    type: string
+    default: alpine:latest
+    from:
+      prompt: Enter the Docker image (e.g. ruby:2.1)
+
+  gitlab-ci-docker-policy:
+    type: enum
+    default: always
+    options:
+      - always
+      - never
+      - if-not-present
+    from:
+      prompt: Select private Docker image-registry pull policy
+
+services:
+  runner:
+    image: gitlab/gitlab-runner:alpine
+    instances: {{ gitlab-ci-instances }}
+    deploy:
+      strategy: ha
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    hooks:
+      post_start:
+        - name: Register GitLab Runner
+          cmd: gitlab-runner register --non-interactive --url {{gitlab-ci-url}} --registration-token {{gitlab-ci-token}} --description {{gitlab-ci-description}} --tag-list {{gitlab-ci-tags}} --executor {{gitlab-ci-executor}} --docker-image {{gitlab-ci-docker-image}} --docker-pull-policy {{gitlab-ci-docker-policy}}
+          instances: "*"
